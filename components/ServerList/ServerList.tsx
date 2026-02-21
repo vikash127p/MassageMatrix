@@ -6,8 +6,14 @@ import Link from 'next/link';
 
 const ServerList = () => {
   const { client } = useChatContext();
-  const { server: activeServer, changeServer, servers, setServers } =
-    useDiscordContext();
+  const {
+    server: activeServer,
+    changeServer,
+    servers,
+    setServers,
+    unreadByChannel,
+    channelsByCategories,
+  } = useDiscordContext();
 
   const handleCreateServer = (serverName: string, image?: string) => {
     if (!serverName.trim()) return;
@@ -47,26 +53,58 @@ const ServerList = () => {
       <div className="flex flex-col items-center gap-3">
         {servers
           .filter((server) => typeof server.name === 'string')
-          .map((server) => (
-          <div
-            key={server.id!}
-            onClick={() => client && changeServer(server, client)}
-            className="
-              w-12 h-12
-              flex items-center justify-center
-              bg-[#5865F2]
-              text-white
-              font-bold
-              rounded-full
-              cursor-pointer
-              transition-all duration-200
-              hover:rounded-2xl
-              hover:bg-[#4752C4]
-            "
-          >
-            {server.name.charAt(0).toUpperCase()}
-          </div>
-          ))}
+          .map((server) => {
+            const iconSrc = server.image?.trim();
+            const serverChannelIds = [
+              ...(channelsByCategories.get('Text Channels') ?? []),
+              ...(channelsByCategories.get('Voice Channels') ?? []),
+            ]
+              .filter(
+                (c) =>
+                  (c.data as Record<string, unknown>)?.team === server.name
+              )
+              .map((c) => c.id);
+            const totalUnread = serverChannelIds.reduce(
+              (sum, id) => sum + (unreadByChannel[id] ?? 0),
+              0
+            );
+            return (
+              <div key={server.id!} className='relative'>
+                <div
+                  onClick={() => client && changeServer(server, client)}
+                  className="
+                    w-12 h-12
+                    flex items-center justify-center
+                    bg-[#5865F2]
+                    text-white
+                    font-bold
+                    rounded-full
+                    cursor-pointer
+                    transition-all duration-200
+                    hover:rounded-2xl
+                    hover:bg-[#4752C4]
+                    overflow-hidden
+                  "
+                >
+                  {iconSrc ? (
+                    <img
+                      src={iconSrc}
+                      alt={server.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    server.name.charAt(0).toUpperCase()
+                  )}
+                </div>
+                {totalUnread > 0 && (
+                  <span
+                    className='absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full border-2 border-[#1E1F22]'
+                    aria-label={`${totalUnread} unread`}
+                  />
+                )}
+              </div>
+            );
+          })}
       </div>
       <Link
         href={'/?createServer=true'}

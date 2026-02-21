@@ -13,9 +13,27 @@ export default function MessageComposer(): JSX.Element {
   const [plusMenuOpen, setPlusMenuOpen] = useState(false);
   const { channel } = useChatContext();
   const [message, setMessage] = useState('');
+
+  const handleSend = () => {
+    if (!message.trim()) return;
+    channel?.sendMessage({ text: message });
+    setMessage('');
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    handleSend();
+  };
+
   return (
-    <div className='flex mx-6 my-6 px-4 py-1 bg-composer-gray items-center justify-center space-x-4 rounded-md text-gray-600 relative'>
-      <button onClick={() => setPlusMenuOpen((menuOpen) => !menuOpen)}>
+    <form
+      onSubmit={handleSubmit}
+      className='flex mx-6 my-6 px-4 py-1 bg-composer-gray items-center justify-center space-x-4 rounded-md text-gray-600 relative'
+    >
+      <button
+        type='button'
+        onClick={() => setPlusMenuOpen((menuOpen) => !menuOpen)}
+      >
         <PlusCircle className='w-8 h-8 hover:text-gray-800' />
       </button>
       {plusMenuOpen && (
@@ -24,6 +42,7 @@ export default function MessageComposer(): JSX.Element {
             {plusItems.map((option) => (
               <button
                 key={option.name}
+                type='button'
                 className=''
                 onClick={() => setPlusMenuOpen(false)}
               >
@@ -38,17 +57,18 @@ export default function MessageComposer(): JSX.Element {
         type='text'
         value={message}
         onChange={(e) => setMessage(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            handleSend();
+          }
+        }}
         placeholder='Message #general'
       />
       <Present className='w-8 h-8 hover:text-gray-800' />
       <GIF className='w-8 h-8 hover:text-gray-800' />
       <Emoji className='w-8 h-8 hover:text-gray-800' />
-      <SendButton
-        sendMessage={() => {
-          channel?.sendMessage({ text: message });
-          setMessage('');
-        }}
-      />
-    </div>
+      <SendButton sendMessage={handleSend} />
+    </form>
   );
 }

@@ -11,6 +11,8 @@ type DiscordState = {
   server?: DiscordServer;
   servers: DiscordServer[];
   setServers: React.Dispatch<React.SetStateAction<DiscordServer[]>>;
+  unreadByChannel: Record<string, number>;
+  setUnreadByChannel: React.Dispatch<React.SetStateAction<Record<string, number>>>;
   createChannelModalOpen: boolean;
   setCreateChannelModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
   callId: string | undefined;
@@ -44,6 +46,8 @@ const initialValue: DiscordState = {
   server: undefined,
   servers: [],
   setServers: () => {},
+  unreadByChannel: {},
+  setUnreadByChannel: () => {},
   createChannelModalOpen: false,
   setCreateChannelModalOpen: () => {},
   callId: undefined,
@@ -67,8 +71,19 @@ export const DiscordContextProvider: any = ({
 }: {
   children: React.ReactNode;
 }) => {
-  const [servers, setServers] = useState<DiscordServer[]>([]);
-  console.log('SERVERS STATE:', servers);
+  const [servers, setServers] = useState<DiscordServer[]>(() => {
+    if (typeof window === 'undefined') return [];
+
+    try {
+      const stored = localStorage.getItem('discord_servers');
+      if (!stored) return [];
+      return JSON.parse(stored);
+    } catch {
+      return [];
+    }
+  });
+
+  const [unreadByChannel, setUnreadByChannel] = useState<Record<string, number>>({});
   const [createChannelModalOpen, setCreateChannelModalOpen] = useState(false);
   const [activeCall, setActiveCall] = useState<Call | undefined>(undefined);
   const [lastActiveChannel, setLastActiveChannel] = useState<
@@ -76,27 +91,8 @@ export const DiscordContextProvider: any = ({
   >(undefined);
   const [myState, setMyState] = useState<DiscordState>(initialValue);
 
-  // Restore once on mount
   useEffect(() => {
-    const saved = localStorage.getItem('discord_servers');
-    console.log('Restoring from localStorage:', saved);
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved) as DiscordServer[];
-        setServers(
-          Array.isArray(parsed)
-            ? parsed.map((s) => ({ ...s, id: s.id ?? crypto.randomUUID() }))
-            : []
-        );
-      } catch {
-        setServers([]);
-      }
-    }
-  }, []);
-
-  // Save whenever servers change
-  useEffect(() => {
-    console.log('Saving to localStorage:', servers);
+    if (servers.length === 0) return;
     localStorage.setItem('discord_servers', JSON.stringify(servers));
   }, [servers]);
 
@@ -257,6 +253,8 @@ export const DiscordContextProvider: any = ({
     server: myState.server,
     servers,
     setServers,
+    unreadByChannel,
+    setUnreadByChannel,
     createChannelModalOpen,
     setCreateChannelModalOpen,
     callId: myState.callId,

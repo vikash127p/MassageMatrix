@@ -17,6 +17,8 @@ const CustomChannelList: React.FC<ChannelListMessengerProps> = () => {
     setCreateChannelModalOpen,
     setActiveCall,
     setLastActiveChannel,
+    setUnreadByChannel,
+    unreadByChannel,
     activeCall,
   } = useDiscordContext();
   const { setActiveChannel, activeChannel } = useChatContext();
@@ -62,30 +64,40 @@ const CustomChannelList: React.FC<ChannelListMessengerProps> = () => {
                 </button>
               </div>
               <div>
-                {textChannels.map((channel) => (
-                  <div
-                    key={channel.id}
-                    role='button'
-                    tabIndex={0}
-                    onClick={() => {
-                      setLastActiveChannel(channel);
-                      setActiveChannel(channel);
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
+                {textChannels.map((channel) => {
+                  const unread = unreadByChannel[channel.id] ?? 0;
+                  return (
+                    <div
+                      key={channel.id}
+                      role='button'
+                      tabIndex={0}
+                      onClick={() => {
                         setLastActiveChannel(channel);
                         setActiveChannel(channel);
-                      }
-                    }}
-                    className={`channel-item w-full flex items-center mx-2 px-2 py-1 text-sm hover:bg-gray-200 rounded-md cursor-pointer ${
-                      activeChannel?.id === channel.id ? 'active bg-gray-200 font-semibold' : ''
-                    }`}
-                  >
-                    <span className='italic text-xl mr-2 text-gray-500'>#</span>
-                    <span>{channel.data?.name ?? 'Channel'}</span>
-                  </div>
-                ))}
+                        setUnreadByChannel((prev) => ({ ...prev, [channel.id]: 0 }));
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          setLastActiveChannel(channel);
+                          setActiveChannel(channel);
+                          setUnreadByChannel((prev) => ({ ...prev, [channel.id]: 0 }));
+                        }
+                      }}
+                      className={`channel-item w-full flex items-center mx-2 px-2 py-1 text-sm hover:bg-gray-200 rounded-md cursor-pointer ${
+                        activeChannel?.id === channel.id ? 'active bg-gray-200 font-semibold' : ''
+                      }`}
+                    >
+                      <span className='italic text-xl mr-2 text-gray-500'>#</span>
+                      <span>{channel.data?.name ?? 'Channel'}</span>
+                      {unread > 0 && (
+                        <span className='ml-2 bg-red-500 text-white text-xs px-2 rounded-full'>
+                          {unread}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
 

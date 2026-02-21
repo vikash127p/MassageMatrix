@@ -1,10 +1,12 @@
 import { UserObject } from '@/model/UserObject';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useChatContext } from 'stream-chat-react';
 import { CloseMark } from '../ChannelList/Icons';
 import UserRow from '../ChannelList/CreateChannelForm/UserRow';
+import { useDiscordContext } from '@/contexts/DiscordContext';
+import { DiscordServer } from '@/app/page';
 
 type FormState = {
   serverName: string;
@@ -17,11 +19,13 @@ type CreateServerFormProps = {
 };
 
 const CreateServerForm = ({ onCreateServer }: CreateServerFormProps) => {
+  const router = useRouter();
   const params = useSearchParams();
   const showCreateServerForm = params.get('createServer');
   const dialogRef = useRef<HTMLDialogElement>(null);
 
   const { client } = useChatContext();
+  const { setServers, changeServer } = useDiscordContext();
   const initialState: FormState = {
     serverName: '',
     serverImage: '',
@@ -60,7 +64,7 @@ const CreateServerForm = ({ onCreateServer }: CreateServerFormProps) => {
     loadUsers();
   }, [loadUsers]);
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     const serverName = formData.serverName.trim();
@@ -70,11 +74,21 @@ const CreateServerForm = ({ onCreateServer }: CreateServerFormProps) => {
 
     if (!serverName.trim()) return;
 
-    onCreateServer(serverName, serverImage);
+    const newServer: DiscordServer = {
+      id: crypto.randomUUID(),
+      name: serverName.trim(),
+      image: serverImage ?? '',
+    };
+
+    setServers((prev) => [...prev, newServer]);
+
+    if (client) {
+      changeServer(newServer, client);
+    }
 
     setFormData(initialState);
-
     dialogRef.current?.close();
+    router.replace('/');
   };
 
   return (

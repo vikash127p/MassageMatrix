@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useClient } from '@/hooks/useClient';
 import { User } from 'stream-chat';
 import {
@@ -8,6 +9,7 @@ import {
   MessageInput,
   Thread,
   Window,
+  useChatContext,
 } from 'stream-chat-react';
 
 import CustomChannelList from '@/components/ChannelList/CustomChannelList';
@@ -22,6 +24,32 @@ import '@stream-io/video-react-sdk/dist/css/styles.css';
 import { useDiscordContext } from '@/contexts/DiscordContext';
 import CallLayout from '@/components/MyCall/CallLayout';
 import CustomChannelHeader from './MessageList/CustomChannelHeader/CustomChannelHeader';
+
+function UnreadListener() {
+  const { client, channel: activeChannel } = useChatContext();
+  const { setUnreadByChannel } = useDiscordContext();
+
+  useEffect(() => {
+    if (!client) return;
+
+    const handleMessageNew = (event: { channel_id?: string; cid?: string }) => {
+      const channelId = event.channel_id ?? (event.cid ? String(event.cid).split(':')[1] : undefined);
+      if (!channelId || activeChannel?.id === channelId) return;
+
+      setUnreadByChannel((prev) => ({
+        ...prev,
+        [channelId]: (prev[channelId] ?? 0) + 1,
+      }));
+    };
+
+    client.on('message.new', handleMessageNew);
+    return () => {
+      client.off('message.new', handleMessageNew);
+    };
+  }, [client, activeChannel?.id, setUnreadByChannel]);
+
+  return null;
+}
 
 export default function MyChat({
   apiKey,
@@ -55,6 +83,7 @@ export default function MyChat({
   return (
     <StreamVideo client={videoClient}>
       <Chat client={chatClient} theme='str-chat__theme-light'>
+        <UnreadListener />
         <section className='flex h-screen w-screen layout'>
           <ServerList />
           <ChannelList List={CustomChannelList} sendChannelsToList={true} />
