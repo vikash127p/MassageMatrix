@@ -5,9 +5,11 @@ import { PersonIcon } from '../Icons';
 export default function UserRow({
   user,
   userChanged,
+  checked = false,
 }: {
   user: UserObject;
   userChanged: (user: UserObject, checked: boolean) => void;
+  checked?: boolean;
 }): JSX.Element {
   return (
     <div className='flex items-center justify-start w-full space-x-4 my-2'>
@@ -16,6 +18,7 @@ export default function UserRow({
         type='checkbox'
         name={user.id}
         className='w-4 h-4 mb-0'
+        checked={checked}
         onChange={(event) => {
           userChanged(user, event.target.checked);
         }}

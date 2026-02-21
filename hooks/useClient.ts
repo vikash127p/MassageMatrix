@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { StreamChat, TokenOrProvider, User } from 'stream-chat';
 
 export type UseClientOptions = {
@@ -13,32 +13,42 @@ export const useClient = ({
   tokenOrProvider,
 }: UseClientOptions): StreamChat | undefined => {
   const [chatClient, setChatClient] = useState<StreamChat>();
+  const tokenRef = useRef<TokenOrProvider>(tokenOrProvider);
+  const userRef = useRef<User>(user);
+  const effectGenerationRef = useRef(0);
+  tokenRef.current = tokenOrProvider;
+  userRef.current = user;
 
   useEffect(() => {
-    const client = new StreamChat(apiKey);
-    // prevents application from setting stale client (user changed, for example)
-    let didUserConnectInterrupt = false;
+    const token = tokenRef.current;
+    const currentUser = userRef.current;
+    if (!currentUser?.id || !token || typeof token !== 'string') return;
 
-    const connectionPromise = client
-      .connectUser(user, tokenOrProvider)
-      .then(() => {
-        if (!didUserConnectInterrupt) {
-          setChatClient(client);
+    const generation = ++effectGenerationRef.current;
+    const client = new StreamChat(apiKey);
+    let disposed = false;
+
+    const connectPromise = (async () => {
+      try {
+        await client.connectUser(currentUser, token);
+        if (disposed || generation !== effectGenerationRef.current) {
+          await client.disconnectUser();
+          return;
         }
-      });
+        setChatClient(client);
+        if (typeof window !== 'undefined') {
+          (window as unknown as { client?: StreamChat }).client = client;
+        }
+      } catch {
+        if (!disposed) setChatClient(undefined);
+      }
+    })();
 
     return () => {
-      didUserConnectInterrupt = true;
-      setChatClient(undefined);
-      // wait for connection to finish before initiating closing sequence
-      connectionPromise
-        .then(() => client.disconnectUser())
-        .then(() => {
-          console.log('connection closed');
-        });
+      disposed = true;
+      connectPromise.then(() => client.disconnectUser()).catch(() => {});
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- should re-run only if user.id changes
-  }, [apiKey, user.id, tokenOrProvider]);
+  }, [apiKey, user?.id]);
 
   return chatClient;
 };

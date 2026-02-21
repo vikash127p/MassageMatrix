@@ -1,8 +1,8 @@
-import Link from 'next/link';
 import { Channel } from 'stream-chat';
 import CustomChannelPreview from '../CustomChannelPreview';
 import { useState } from 'react';
 import { ChevronDown, PlusIcon } from '../Icons';
+import { useDiscordContext } from '@/contexts/DiscordContext';
 
 import './CategoryItem.css';
 import { DefaultStreamChatGenerics } from 'stream-chat-react';
@@ -19,6 +19,7 @@ export default function CategoryItem({
   channels,
 }: CategoryItemProps): JSX.Element {
   const [isOpen, setIsOpen] = useState(true);
+  const { setCreateChannelModalOpen } = useDiscordContext();
   return (
     <div className='mb-5'>
       <div className='flex items-center text-gray-500 p-2'>
@@ -37,12 +38,14 @@ export default function CategoryItem({
             {category}
           </span>
         </button>
-        <Link
-          className='inline-block create-button'
-          href={`/?createChannel=true&serverName=${serverName}&category=${category}`}
+        <button
+          type="button"
+          className="inline-block create-button"
+          onClick={() => setCreateChannelModalOpen(true)}
+          aria-label="Create channel"
         >
           <PlusIcon />
-        </Link>
+        </button>
       </div>
       {isOpen && (
         <div>

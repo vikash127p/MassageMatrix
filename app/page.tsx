@@ -2,19 +2,14 @@
 
 import { User } from 'stream-chat';
 import { LoadingIndicator } from 'stream-chat-react';
-
 import { useClerk } from '@clerk/nextjs';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import MyChat from '@/components/MyChat';
 
-// const userId = '7cd445eb-9af2-4505-80a9-aa8543c3343f';
-// const userName = 'Harry Potter';
-
-const apiKey = '7cu55d72xtjs';
-// const userToken =
-//   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiN2NkNDQ1ZWItOWFmMi00NTA1LTgwYTktYWE4NTQzYzMzNDNmIn0.TtrCA5VoRB2KofI3O6lYjYZd2pHdQT408u7ryeWO4Qg';
+const apiKey = process.env.NEXT_PUBLIC_STREAM_CHAT_API_KEY ?? '';
 
 export type DiscordServer = {
+  id?: string;
   name: string;
   image: string | undefined;
 };
@@ -27,96 +22,62 @@ export type Homestate = {
 
 export default function Home() {
   const [myState, setMyState] = useState<Homestate | undefined>(undefined);
-
   const { user: myUser } = useClerk();
+  const fetchedForUserIdRef = useRef<string | null>(null);
 
-  const registerUser = useCallback(
-    async function registerUser() {
-      // register user on Stream backend
-      console.log('[registerUser] myUser:', myUser);
-      const userId = myUser?.id;
-      const mail = myUser?.primaryEmailAddress?.emailAddress;
-      if (userId && mail) {
-        const streamResponse = await fetch('/api/register-user', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            userId: userId,
-            email: mail,
-          }),
-        });
-        const responseBody = await streamResponse.json();
-        console.log('[registerUser] Stream response:', responseBody);
-        return responseBody;
-      }
-    },
-    [myUser]
-  );
+  const registerUser = useCallback(async () => {
+    const userId = myUser?.id;
+    const mail = myUser?.primaryEmailAddress?.emailAddress;
+    if (!userId || !mail) return;
+    const streamResponse = await fetch('/api/register-user', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, email: mail }),
+    });
+    if (!streamResponse.ok) {
+      const err = await streamResponse.json().catch(() => ({}));
+      throw new Error(err?.error ?? 'Failed to register with chat');
+    }
+    await streamResponse.json();
+  }, [myUser]);
 
   useEffect(() => {
-    if (
-      myUser?.id &&
-      myUser?.primaryEmailAddress?.emailAddress &&
-      !myUser?.publicMetadata.streamRegistered
-    ) {
-      console.log('[Page - useEffect] Registering user on Stream backend');
-      registerUser().then((result) => {
-        console.log('[Page - useEffect] Result: ', result);
-        getUserToken(
-          myUser.id,
-          myUser?.primaryEmailAddress?.emailAddress || 'Unknown'
-        );
-      });
-    } else {
-      // take user and get token
-      if (myUser?.id) {
-        console.log(
-          '[Page - useEffect] User already registered on Stream backend: ',
-          myUser?.id
-        );
-        getUserToken(
-          myUser?.id || 'Unknown',
-          myUser?.primaryEmailAddress?.emailAddress || 'Unknown'
-        );
+    if (!myUser?.id || !myUser?.primaryEmailAddress?.emailAddress) return;
+    if (fetchedForUserIdRef.current === myUser.id) return;
+    fetchedForUserIdRef.current = myUser.id;
+    const userId = myUser.id;
+    const userName = myUser.primaryEmailAddress.emailAddress;
+    let cancelled = false;
+    (async () => {
+      try {
+        await registerUser();
+      } catch {
+        // Continue to get token even if upsert fails (user may already exist on Stream)
       }
-    }
-  }, [registerUser, myUser]);
+      if (cancelled) return;
+      const response = await fetch('/api/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId }),
+      });
+      const responseBody = await response.json();
+      const token = responseBody.token;
+      if (cancelled || !token) return;
+      const user: User = {
+        id: userId,
+        name: userName,
+        image: `https://getstream.io/random_png/?id=${userId}&name=${encodeURIComponent(userName)}`,
+      };
+      setMyState({ apiKey, user, token });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [myUser?.id, myUser?.primaryEmailAddress?.emailAddress, registerUser]);
 
   if (!myState) {
     return <LoadingIndicator />;
   }
 
   return <MyChat {...myState} />;
-
-  async function getUserToken(userId: string, userName: string) {
-    const response = await fetch('/api/token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        userId: userId,
-      }),
-    });
-    const responseBody = await response.json();
-    const token = responseBody.token;
-
-    if (!token) {
-      console.error("Couldn't retrieve token.");
-      return;
-    }
-
-    const user: User = {
-      id: userId,
-      name: userName,
-      image: `https://getstream.io/random_png/?id=${userId}&name=${userName}`,
-    };
-    setMyState({
-      apiKey: apiKey,
-      user: user,
-      token: token,
-    });
-  }
 }

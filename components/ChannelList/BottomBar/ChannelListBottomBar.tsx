@@ -7,11 +7,10 @@ import ChannelListMenuRow from '../TopBar/ChannelListMenuRow';
 
 export default function ChannelListBottomBar(): JSX.Element {
   const { client } = useChatContext();
+  const { signOut } = useClerk();
   const [micActive, setMicActive] = useState(false);
   const [audioActive, setAudioActive] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-
-  const { signOut } = useClerk();
 
   return (
     <div className='mt-auto p-2 bg-light-gray w-full flex items-center space-x-3 relative'>

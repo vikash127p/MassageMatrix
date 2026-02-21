@@ -1,105 +1,82 @@
 import { useChatContext } from 'stream-chat-react';
-import Image from 'next/image';
-import { useCallback, useEffect, useState } from 'react';
 import { DiscordServer } from '@/app/page';
 import { useDiscordContext } from '@/contexts/DiscordContext';
 import CreateServerForm from './CreateServerForm';
 import Link from 'next/link';
-import { Channel } from 'stream-chat';
 
 const ServerList = () => {
   const { client } = useChatContext();
-  const { server: activeServer, changeServer } = useDiscordContext();
-  const [serverList, setServerList] = useState<DiscordServer[]>([]);
+  const { server: activeServer, changeServer, servers, setServers } =
+    useDiscordContext();
 
-  const loadServerList = useCallback(async (): Promise<void> => {
-    const channels = await client.queryChannels({
-      type: 'messaging',
-      members: { $in: [client.userID as string] },
+  const handleCreateServer = (serverName: string, image?: string) => {
+    if (!serverName.trim()) return;
+
+    console.log('Creating server:', serverName);
+    console.log('Servers BEFORE:', servers);
+
+    const newServer: DiscordServer = {
+      id: crypto.randomUUID(),
+      name: serverName.trim(),
+      image: image ?? '',
+    };
+
+    setServers((prev) => {
+      console.log('Previous servers:', prev);
+      const updated = [...prev, newServer];
+      console.log('Updated servers:', updated);
+      return updated;
     });
-    const serverSet: Set<DiscordServer> = new Set(
-      channels
-        .map((channel: Channel) => {
-          return {
-            name: (channel.data?.data?.server as string) ?? 'Unknown',
-            image: channel.data?.data?.image,
-          };
-        })
-        .filter((server: DiscordServer) => server.name !== 'Unknown')
-        .filter(
-          (server: DiscordServer, index, self) =>
-            index ===
-            self.findIndex((serverObject) => serverObject.name == server.name)
-        )
-    );
-    const serverArray = Array.from(serverSet.values());
-    setServerList(serverArray);
-    if (serverArray.length > 0) {
-      changeServer(serverArray[0], client);
-    }
-  }, [client, changeServer]);
 
-  useEffect(() => {
-    loadServerList();
-  }, [loadServerList]);
+    if (client) {
+      changeServer(newServer, client);
+    }
+  };
 
   return (
-    <div className='bg-dark-gray h-full flex flex-col items-center'>
+    <div className="flex flex-col items-center gap-3 py-3 bg-[#1E1F22] w-16 min-h-screen">
       <button
-        className={`block p-3 aspect-square sidebar-icon border-t-2 border-t-gray-300 ${
-          activeServer === undefined ? 'selected-icon' : ''
+        className={`w-12 h-12 flex items-center justify-center rounded-full cursor-pointer transition-all duration-200 hover:rounded-2xl ${
+          activeServer === undefined ? 'bg-[#4752C4] rounded-2xl' : 'bg-[#313338] hover:bg-[#4752C4]'
         }`}
         onClick={() => changeServer(undefined, client)}
+        aria-label="Direct Messages"
       >
-        <div className='rounded-icon discord-icon'></div>
+        <div className="rounded-icon discord-icon" />
       </button>
-      <div className='border-t-2 border-t-gray-300'>
-        {serverList.map((server) => {
-          return (
-            <button
-              key={server.name}
-              className={`p-4 sidebar-icon ${
-                server === activeServer ? 'selected-icon' : ''
-              }`}
-              onClick={() => {
-                changeServer(server, client);
-              }}
-            >
-              {server.image && checkIfUrl(server.image) ? (
-                <Image
-                  className='rounded-icon'
-                  src={server.image}
-                  width={50}
-                  height={50}
-                  alt='Server Icon'
-                />
-              ) : (
-                <span className='rounded-icon bg-gray-600 w-[50px] flex items-center justify-center text-sm'>
-                  {server.name.charAt(0)}
-                </span>
-              )}
-            </button>
-          );
-        })}
+      <div className="flex flex-col items-center gap-3">
+        {servers
+          .filter((server) => typeof server.name === 'string')
+          .map((server) => (
+          <div
+            key={server.id!}
+            onClick={() => client && changeServer(server, client)}
+            className="
+              w-12 h-12
+              flex items-center justify-center
+              bg-[#5865F2]
+              text-white
+              font-bold
+              rounded-full
+              cursor-pointer
+              transition-all duration-200
+              hover:rounded-2xl
+              hover:bg-[#4752C4]
+            "
+          >
+            {server.name.charAt(0).toUpperCase()}
+          </div>
+          ))}
       </div>
       <Link
         href={'/?createServer=true'}
-        className='flex items-center justify-center rounded-icon bg-white text-green-500 hover:bg-green-500 hover:text-white hover:rounded-xl transition-all duration-200 p-2 my-2 text-2xl font-light h-12 w-12'
+        className="w-12 h-12 flex items-center justify-center rounded-full bg-[#313338] text-green-500 hover:bg-green-600 hover:text-white hover:rounded-2xl transition-all duration-200 font-bold text-xl"
       >
-        <span className='inline-block'>+</span>
+        +
       </Link>
-      <CreateServerForm />
+      <CreateServerForm onCreateServer={handleCreateServer} />
     </div>
   );
-
-  function checkIfUrl(path: string): Boolean {
-    try {
-      const _ = new URL(path);
-      return true;
-    } catch (_) {
-      return false;
-    }
-  }
 };
 
 export default ServerList;
