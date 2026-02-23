@@ -44,6 +44,45 @@ export default function CustomMessage(): JSX.Element {
           )}
         </div>
         <p className='text-sm text-gray-700'>{message.text}</p>
+        {message.attachments && message.attachments.length > 0 && (
+          <div className='mt-1 flex flex-col gap-2'>
+            {message.attachments.map((attachment, idx) => {
+              const url = attachment.asset_url;
+              const type = attachment.type || 'file';
+              if (type === 'image' && url) {
+                return (
+                  <a
+                    key={idx}
+                    href={url}
+                    target='_blank'
+                    rel='noopener noreferrer'
+                    className='block max-w-sm rounded overflow-hidden border border-gray-200'
+                  >
+                    <img
+                      src={attachment.thumb_url || url}
+                      alt={attachment.title || 'Image attachment'}
+                      className='max-h-64 w-auto object-contain'
+                    />
+                  </a>
+                );
+              }
+              if (url) {
+                return (
+                  <a
+                    key={idx}
+                    href={url}
+                    target='_blank'
+                    rel='noopener noreferrer'
+                    className='text-sm text-dark-discord hover:underline'
+                  >
+                    {attachment.title || 'File attachment'}
+                  </a>
+                );
+              }
+              return null;
+            })}
+          </div>
+        )}
         <ReactionsList />
       </div>
     </div>

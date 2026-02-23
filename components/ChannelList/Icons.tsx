@@ -196,6 +196,23 @@ export function FolderPlus({ className = 'h-5 w-5' }: IconProps): JSX.Element {
   );
 }
 
+export function Paperclip({ className = 'h-5 w-5' }: IconProps): JSX.Element {
+  return (
+    <svg
+      xmlns='http://www.w3.org/2000/svg'
+      viewBox='0 0 24 24'
+      fill='currentColor'
+      className={className}
+    >
+      <path
+        fillRule='evenodd'
+        d='M18.97 3.659a2.25 2.25 0 0 0-3.182 0l-10.94 10.94a3.75 3.75 0 1 0 5.303 5.303l7.693-7.693a.75.75 0 0 1 1.06 1.06l-7.693 7.693a5.25 5.25 0 1 1-7.424-7.424l10.94-10.94a.75.75 0 0 1 1.061 1.06l-10.94 10.94a3.75 3.75 0 0 0 5.303-5.303l7.693-7.693a.75.75 0 1 1 1.06 1.06l-7.693 7.693a5.25 5.25 0 0 1-7.424-7.424l10.94-10.94a2.25 2.25 0 0 0 0-3.182Z'
+        clipRule='evenodd'
+      />
+    </svg>
+  );
+}
+
 export function Gear({ className = 'h-5 w-5' }: IconProps): JSX.Element {
   return (
     <svg
